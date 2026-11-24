@@ -22,38 +22,42 @@ function size(){
   u=Math.max(.45,Math.min(1.4,Math.min(W,H)/700)); // glyph scale
 }
 addEventListener('resize',size);size();
-let wins=[],nightT=0,nextMeteor=10;const meteors=[];
+let wins=[],nightT=3,nextMeteor=10;const meteors=[];
+// seeded randomness so the same skyline is rebuilt (not re-rolled) when the window resizes
+const mul=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+const hs=n=>{n=Math.imul(n^n>>>15,n|1);n^=n+Math.imul(n^n>>>7,n|61);return((n^n>>>14)>>>0)/4294967296};
 function build(){
-  wins=[];nightT=0;
-  const R=Math.random,cell=Math.max(4,Math.round(4*u)),ww=cell-2,snap=v=>Math.round(v/cell)*cell;
-  function fill(x,bw,y0,y1,bd){
+  wins=[];
+  const cell=Math.max(4,Math.round(4*u)),ww=cell-2,snap=v=>Math.round(v/cell)*cell;
+  function fill(seed,x,bw,y0,y1,bd){
     for(let yy=y0;yy<y1;yy+=cell)for(let xx=x;xx<x+bw-cell/2;xx+=cell){
-      if(R()<.6)wins.push({x:xx,y:yy,c:`${232+R()*23|0},${232+R()*23|0},${232+R()*23|0}`,d:bd+R()*16,m:.45+R()*.55,p:R()*6.28,v:.05+R()*.15,tw:R()<.3});
+      const row=Math.round((H-yy)/cell),col=Math.round((xx-x)/cell),k=seed*1000003+col*7919+row*104729;
+      if(hs(k+1)<.6){const v=232+hs(k+2)*23|0;wins.push({x:xx,y:yy,c:`${v},${v},${v}`,d:bd+hs(k+3)*16,m:.45+hs(k+4)*.55,p:hs(k+5)*6.28,v:.05+hs(k+6)*.15,tw:hs(k+7)<.3})}
     }
   }
-  function tower(x,bw,bh){
-    const bd=R()*50;
-    fill(x,bw,H-bh,H,bd);
+  function tower(i,x,bw,bh,R,bd){
+    fill(i,x,bw,H-bh,H,bd);
     if(bw>cell*5&&R()<.5){ // stepped crown
       const cw=snap(bw*(.4+R()*.3)),ch=snap(H*(.03+R()*.09)),cx=x+snap((bw-cw)/2);
-      fill(cx,cw,H-bh-ch,H-bh,bd+4);
+      fill(i+500,cx,cw,H-bh-ch,H-bh,bd+4);
       if(R()<.5)bh+=ch,x=cx,bw=cw;
     }
-    if(bh>H*.28&&R()<.55){ // antenna with red lamp
+    if(bh>H*.28&&R()<.55){ // antenna with blinking lamp
       const ax=x+snap(bw/2),top=H-bh-cell*7;
-      for(let i=1;i<7;i++)wins.push({x:ax,y:top+i*cell,c:'240,240,240',d:bd+20,m:.5,p:0,v:.1,tw:false});
+      for(let j=1;j<7;j++)wins.push({x:ax,y:top+j*cell,c:'240,240,240',d:bd+20,m:.5,p:0,v:.1,tw:false});
       wins.push({x:ax,y:top,c:'40,255,70',d:bd+22,m:1,p:R()*6.28,v:.1,tw:false,bl:true});
     }
   }
-  let x=snap(W*.01);
+  let x=snap(W*.01),i=0;
   while(x<W){
-    const k=R();let bw,bh;
+    const R=mul(1000+i),k=R();let bw,bh;
     if(k<.28){bw=cell*(4+(R()*4|0));bh=H*(.2+R()*.32)}
     else if(k<.65){bw=cell*(8+(R()*9|0));bh=H*(.08+R()*.26)}
     else{bw=cell*(14+(R()*16|0));bh=H*(.04+R()*.13)}
     bw=Math.min(bw,W-x);bh=snap(bh);
-    if(bw>cell*2)tower(x,bw,bh);
-    x+=bw+cell*(R()*6|0);
+    const bd=i<2?0:R()*50,gap=cell*(R()*6|0);
+    if(bw>cell*2)tower(i,x,bw,bh,R,bd);
+    x+=bw+gap;i++;
   }
   wins.ww=ww;
 }
@@ -152,7 +156,7 @@ function draw(now,dt){
       const q=Math.max(2,Math.round(2*u));
       for(let k=0;k<22;k++){g.fillStyle=`rgba(110,130,255,${ca*Math.sin(f*Math.PI)*(1-k/22)})`;g.fillRect(Math.round(m.x-Math.cos(m.a)*k*q*2),Math.round(m.y-Math.sin(m.a)*k*q*2),q,q)}
     }
-  }else nightT=0;
+  }else nightT=3;
 
   // rain
   if(r>.02){
